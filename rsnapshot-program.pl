@@ -3689,37 +3689,12 @@ sub rsync_backup_point {
 		$rsync_short_args .= $$bp_ref{'opts'}->{'extra_rsync_short_args'};
 	}
 
-	# RSYNC LONG ARGS
-	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'rsync_long_args'})) {
-		@rsync_long_args_stack = split_long_args_with_quotes('rsync_long_args (for a backup point)',
-			$$bp_ref{'opts'}->{'rsync_long_args'});
-	}
-	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'extra_rsync_long_args'})) {
-		push(
-			@rsync_long_args_stack,
-			split_long_args_with_quotes(
-				'extra_rsync_long_args (for a backup point)',
-				$$bp_ref{'opts'}->{'extra_rsync_long_args'}
-			)
-		);
-	}
-
 	# SSH ARGS
 	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'ssh_args'})) {
 		$ssh_args = $$bp_ref{'opts'}->{'ssh_args'};
 	}
 	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'extra_ssh_args'})) {
 		$ssh_args .= ' ' . $$bp_ref{'opts'}->{'extra_ssh_args'};
-	}
-
-	# ONE_FS
-	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'one_fs'})) {
-		if (1 == $$bp_ref{'opts'}->{'one_fs'}) {
-			$rsync_short_args .= 'x';
-		}
-	}
-	elsif ($one_fs) {
-		$rsync_short_args .= 'x';
 	}
 
 	# SEE WHAT KIND OF SOURCE WE'RE DEALING WITH
@@ -3729,36 +3704,35 @@ sub rsync_backup_point {
 
 		# no change
 
-		# if this is a user@host:/path (or ...:./path, or ...:~/...), use ssh
+	# if this is a user@host:/path (or ...:./path, or ...:~/...), use ssh
 	}
 	elsif (is_ssh_path($src)) {
 
+		my $sSSHArgs = "-e \'$config_vars{'cmd_ssh'}";
+
 		# if we have any args for SSH, add them
 		if (defined($ssh_args)) {
-			push(@rsync_long_args_stack, "--rsh=$config_vars{'cmd_ssh'} $ssh_args");
-
+			$sSSHArgs .= " $ssh_args";
 		}
 
-		# no arguments is the default
-		else {
-			push(@rsync_long_args_stack, "--rsh=$config_vars{'cmd_ssh'}");
-		}
+		$sSSHArgs .= "\'";
+		push( @rsync_long_args_stack, $sSSHArgs );
 
-		# anonymous rsync
+	# anonymous rsync
 	}
 	elsif (is_anon_rsync_path($src)) {
 
 		# make rsync quiet if we're running in quiet mode
 		if ($verbose < 2) { $rsync_short_args .= 'q'; }
 
-		# cwrsync path
+	# cwrsync path
 	}
 	elsif (is_cwrsync_path($src)) {
 
 		# make rsync quiet if we're running in quiet mode
 		if ($verbose < 2) { $rsync_short_args .= 'q'; }
 
-		# LVM path
+	# LVM path
 	}
 	elsif (is_linux_lvm_path($src)) {
 
@@ -3802,6 +3776,31 @@ sub rsync_backup_point {
 	# this should have already been validated once, but better safe than sorry
 	else {
 		bail("Could not understand source \"$src\" in backup_lowest_interval()");
+	}
+
+	# RSYNC LONG ARGS
+	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'rsync_long_args'})) {
+		push( @rsync_long_args_stack, split_long_args_with_quotes('rsync_long_args (for a backup point)',
+			$$bp_ref{'opts'}->{'rsync_long_args'}) );
+	}
+	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'extra_rsync_long_args'})) {
+		push(
+			@rsync_long_args_stack,
+			split_long_args_with_quotes(
+				'extra_rsync_long_args (for a backup point)',
+				$$bp_ref{'opts'}->{'extra_rsync_long_args'}
+			)
+		);
+	}
+
+	# ONE_FS
+	if (defined($$bp_ref{'opts'}) && defined($$bp_ref{'opts'}->{'one_fs'})) {
+		if (1 == $$bp_ref{'opts'}->{'one_fs'}) {
+			$rsync_short_args .= 'x';
+		}
+	}
+	elsif ($one_fs) {
+		$rsync_short_args .= 'x';
 	}
 
 	# if we're using --link-dest, we'll need to specify the link-dest directory target
