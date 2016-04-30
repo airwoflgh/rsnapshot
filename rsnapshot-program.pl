@@ -1776,8 +1776,9 @@ sub parse_backup_opts {
 	if (!defined($opts_str)) { return (undef); }
 	if (!$opts_str)          { return (undef); }
 
-	# split on commas first
-	@pairs = split(/,/, $opts_str);
+	# split on tabs first, given the standard separator in the configuration file
+	# is documented as tabs.
+	@pairs = split(/\t/, $opts_str);
 
 	# then loop through and split on equals
 	foreach my $pair (@pairs) {
